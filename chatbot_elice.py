@@ -30,14 +30,15 @@ import urllib.request
 
 app = Flask(__name__)
 
-slack_token = "secret"
-slack_client_id = "secret"
-slack_client_secret = "secret"
-slack_verification = "secret"
+slack_token = "SECRET"
+slack_client_id = "SECRET"
+slack_client_secret = "SECRET"
+slack_verification = "SECRET"
 slack = Slacker(slack_token)
 
 caller = []
 channel_list = []
+
 
 def get_name(id):
     user = slack.users.info(id)
@@ -50,6 +51,18 @@ def check_user(user, msg):
         if user == msg['user']:
             return True
     return False
+
+
+def proc(slack_response):
+    call_elice(slack_response["event"])
+
+
+def interact():
+    while True:
+        if len(caller) > 0:
+            res = caller.pop()
+            proc(res)
+            channel_list.remove(res["event"]["channel"])
 
 
 # 앨리스 호출
@@ -67,14 +80,14 @@ def call_elice(event):
             re_yes = re.compile('((yes))|(응)|(ㅇ)+', re.I)
             re_no = re.compile('((no)|(아니))|(ㄴ)+', re.I)
             if msg['text'] == '<@UEXBA7A0K>':
-                slack.chat.post_message(channel, "저 여기 있어요~")
+                slack.chat.post_message(channel, "저 여기 있어요~"
+                                                 "부르셨어요, {}님? \n `응` / `아니`".format(get_name(event['user'])))
             elif re_yes.match(msg['text']):
                 elice(ws, event, msg)
                 break;
             elif re_no.match(msg['text']):
                 slack.chat.post_message(channel, "필요할때 불러주세요:wink:".format(name))
                 break;
-
             else:
                 slack.chat.post_message(channel, "`응` / `아니`로 대답해주세요")
     ws.close()
@@ -118,6 +131,7 @@ def elice(ws, event, msg):
             if 'user' in msg and 'text' in msg :
                 if event['user'] != msg['user']:
                     slack.chat.post_message(channel, "{}님이랑 작업중이에요! 끝날때까지 기다려주세요!".format(name))
+
 
 def hi(channel, hello_count, name):
     if hello_count == 0:
@@ -224,8 +238,8 @@ def trans(ws, channel, name, user_id):
 
 def trans_naver(q):
     encText = urllib.parse.quote(q)
-    client_id = "secret"
-    client_secret = "secret"
+    client_id = "SECRET"
+    client_secret = "SECRET"
     #언어감지
     data = "query=" + encText
     url = "https://openapi.naver.com/v1/papago/detectLangs"
@@ -276,8 +290,9 @@ def _event_handler(event_type, slack_response):
         channel = slack_response["event"]["channel"]
         if slack_response["event"]["channel"] in channel_list:
             pass
-        caller.append(slack_response)
-        channel_list.append(channel)
+        else:
+            caller.append(slack_response)
+            channel_list.append(channel)
         return make_response("App mention message has been sent", 200, )
 
 
@@ -301,7 +316,8 @@ def hears():
 
     if "event" in slack_response:
         event_type = slack_response["event"]["type"]
-        return _event_handler(event_type, slack_response)
+        _event_handler(event_type, slack_response)
+        return make_response(event_type, 200, {"content_type":"application/json"})
 
     # If our bot hears things that are not events we've subscribed to,
     # send a quirky but helpful error response
@@ -312,18 +328,6 @@ def hears():
 @app.route("/", methods=["GET"])
 def index():
     return "<h1>앨리스 서버에용! 어떻게 알고 오셨을까?ㅎ_ㅎ</h1>"
-
-
-def proc(slack_response):
-    call_elice(slack_response["event"])
-
-
-def interact():
-    while True:
-        if len(caller) > 0:
-            res = caller.pop()
-            proc(res)
-            channel_list.remove(res["event"]["channel"])
 
 
 if __name__ == '__main__':
